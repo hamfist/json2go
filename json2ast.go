@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"io"
 	"reflect"
 	"strings"
-	"io"
 )
 
 func convertMap(name string, v map[string]interface{}) ([]ast.Decl, error) {
@@ -114,7 +114,7 @@ func Json2Ast(jsonReader io.Reader) (*ast.File, error) {
 
 	var decls []ast.Decl
 	if decls, err = convertMap("Top", v); err != nil {
-	  return nil, err
+		return nil, err
 	}
 
 	file.Decls = decls
