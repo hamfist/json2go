@@ -1,14 +1,22 @@
-package json2go
+package json2go_test
 
 import (
+	"bytes"
+	"fmt"
 	"go/ast"
 	"go/parser"
+	"go/printer"
 	"go/token"
+	"regexp"
 	"testing"
 )
 
 import (
 	. "launchpad.net/gocheck"
+)
+
+import (
+	"github.com/modcloth/json2go"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -23,8 +31,7 @@ var json2AstTests = []struct {
 }{
 	{
 		`{"foo": 5}`,
-		`
-		package main
+		`package main
 
 		type Top struct {
 		  foo	float64
@@ -40,24 +47,49 @@ var AstEquals Checker = &astEquals{
 	&CheckerInfo{Name: "AST Equals", Params: []string{"obtained", "expected"}},
 }
 
+//Poor man's AST comparison that ignores whitespace. TODO Revisit.
+var WhitespaceRegexp = regexp.MustCompile(`\s+`)
+
 func (this *astEquals) Check(params []interface{}, names []string) (bool, string) {
-	return false, ""
+	var obtainedAstString, expectedAstString *bytes.Buffer
+
+	obtainedAstString = new(bytes.Buffer)
+	expectedAstString = new(bytes.Buffer)
+
+	printer.Fprint(obtainedAstString, token.NewFileSet(), params[0])
+	printer.Fprint(expectedAstString, token.NewFileSet(), params[1])
+
+	//Couldn't replace with one space because the first example output
+	//loses the space inbetween the struct keyword and { when parsed.
+	//TODO Determine if this is a bug in the AST parser/printer
+	trimmedObtained := WhitespaceRegexp.ReplaceAll(obtainedAstString.Bytes(), []byte(""))
+	trimmedExpected := WhitespaceRegexp.ReplaceAll(expectedAstString.Bytes(), []byte(""))
+
+	if string(trimmedObtained) == string(trimmedExpected) {
+		return true, ""
+	}
+
+	return false, fmt.Sprintf("\n%s\ndid not match\n%s", trimmedObtained, trimmedExpected)
 }
 
 func (s *Json2AstSuite) TestJson2Ast(c *C) {
 	var fset *token.FileSet
-	var structAst *ast.File
+	var obtainedAst, expectedAst *ast.File
 	var err error
 
 	fset = token.NewFileSet()
 
-	for _, tt := range json2AstTests {
-		if structAst, err = parser.ParseFile(fset, "", tt.Output, 0); err != nil {
-			panic(err)
+	for i, tt := range json2AstTests {
+		if expectedAst, err = parser.ParseFile(fset, "", tt.Output, 0); err != nil {
+			c.Error(err)
+			continue
 		}
 
-		ast.Print(fset, structAst)
-		//c.Assert(tt.
-		//c.Assert(lucasResult.Type, Equals, tt.lucasSendResult.Type, Commentf("Test Case %d failed", i))
+		if obtainedAst, err = json2go.Json2Ast(bytes.NewBufferString(tt.Input)); err != nil {
+			c.Error(err)
+			continue
+		}
+
+		c.Assert(obtainedAst, AstEquals, expectedAst, Commentf("Test Case %d failed", i))
 	}
 }
