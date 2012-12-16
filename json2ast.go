@@ -2,11 +2,11 @@ package json2go
 
 import (
 	"encoding/json"
-	"fmt"
 	"go/ast"
 	"go/token"
 	"io"
 	"reflect"
+	"sort"
 	"strings"
 )
 
@@ -14,10 +14,21 @@ func convertMap(name string, v map[string]interface{}) ([]ast.Decl, error) {
 	var err error
 	var fields []*ast.Field
 	var nestedDecls []ast.Decl
+	var i int
+	var vKeys []string
 
 	output := make([]ast.Decl, 0)
 
-	for key := range v {
+	vKeys = make([]string, len(v))
+
+	i = 0
+	for k, _ := range v {
+		vKeys[i] = k
+		i++
+	}
+	sort.Strings(vKeys)
+
+	for _, key := range vKeys {
 		var t ast.Expr
 		valueType := reflect.TypeOf(v[key])
 		switch valueType.Kind() {
@@ -109,8 +120,6 @@ func Json2Ast(jsonReader io.Reader) (*ast.File, error) {
 	if err := dec.Decode(&v); err != nil {
 		return nil, err
 	}
-
-	fmt.Printf("%s\n", reflect.TypeOf(v["bar"]))
 
 	var decls []ast.Decl
 	if decls, err = convertMap("Top", v); err != nil {
