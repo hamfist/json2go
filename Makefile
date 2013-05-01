@@ -1,6 +1,6 @@
 TARGETS := \
-  github.com/modcloth/json2go \
-  github.com/modcloth/json2go/json2go
+  github.com/modcloth-labs/json2go \
+  github.com/modcloth-labs/json2go/json2go
 
 all: build test
 

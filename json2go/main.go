@@ -9,7 +9,7 @@ import (
 )
 
 import (
-	"github.com/modcloth/json2go"
+	"github.com/modcloth-labs/json2go"
 )
 
 func main() {
